@@ -96,7 +96,13 @@ pub fn save_xml(
         "Conversion".green(),
     );
     println!("{}: Writing wallpaper description...", "Conversion".green(),);
-    let xml_path = parent_directory.join(format!("{}.xml", image_name));
+    let xml_directory = parent_directory.parent().ok_or_else(|| {
+        anyhow::Error::msg(format!(
+            "Could not determine XML directory for {}",
+            parent_directory.display()
+        ))
+    })?;
+    let xml_path = xml_directory.join(format!("{}.xml", image_name));
     let result_file = std::fs::OpenOptions::new()
         .write(true)
         .truncate(true)

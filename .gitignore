@@ -7,3 +7,6 @@
 *.sha256
 *.log
 *.heic
+/.agents
+/.codex
+*.sh

@@ -8,11 +8,11 @@ The converter supports both Apple `h24` time-based wallpapers and Apple `solar` 
 
 - Extracts every dynamic wallpaper frame from the HEIC container.
 - Preserves irregular `h24` timing intervals from Apple metadata.
-- Writes a GNOME-compatible dynamic wallpaper XML file.
+- Writes GNOME-compatible dynamic wallpaper XML and background picker metadata.
 - Uses parallel frame conversion for faster processing.
-- Installs output by default under `~/.local/share/backgrounds/<wallpaper-name>/`.
+- Installs output by default under `~/.local/share/backgrounds/gnome/`.
 - Can apply the generated wallpaper to GNOME with `--apply`.
-- Can export the generated folder as a ZIP archive with `--zip`.
+- Can export the generated GNOME XML and image folder as a ZIP archive next to the source image with `--zip`.
 
 ## Requirements
 
@@ -66,10 +66,13 @@ heic-to-dynamic-gnome-wallpaper /path/to/wallpaper.heic
 This creates:
 
 ```text
-~/.local/share/backgrounds/<wallpaper-name>/
-  0.png
-  1.png
-  ...
+~/.local/share/backgrounds/gnome/
+  <wallpaper-name>.xml
+  <wallpaper-name>/
+    0.png
+    1.png
+    ...
+~/.local/share/gnome-background-properties/
   <wallpaper-name>.xml
 ```
 
@@ -108,13 +111,13 @@ Arguments:
 
 Options:
   -d, --dir <DIR>
-          Specifies the base directory for generated wallpapers. A folder named after the input image will be created inside it. Default is $XDG_DATA_HOME/backgrounds or ~/.local/share/backgrounds.
+          Specifies the base directory for generated wallpapers. A folder named after the input image and a matching XML file will be created inside it. Default is $XDG_DATA_HOME/backgrounds/gnome or ~/.local/share/backgrounds/gnome.
 
       --apply
           Apply the generated wallpaper through GNOME settings after conversion.
 
       --zip
-          Export the generated wallpaper folder as a zip file next to the folder.
+          Export the generated wallpaper XML and image folder as a zip file next to the source image.
 
   -h, --help
           Print help
