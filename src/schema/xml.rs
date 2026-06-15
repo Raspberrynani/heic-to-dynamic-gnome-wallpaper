@@ -1,5 +1,6 @@
 // heic-to-dynamic-gnome-wallpaper
 // Copyright (C) 2022 Johannes Wünsche
+// Copyright (C) 2026 Raspberrynani
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -34,13 +35,11 @@ pub enum Image {
     Static {
         duration: f32,
         file: String,
-        idx: usize,
     },
     Transition {
         kind: String,
         duration: f32,
         from: String,
         to: String,
-        idx: usize,
     },
 }

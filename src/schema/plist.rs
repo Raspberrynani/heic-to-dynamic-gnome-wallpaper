@@ -1,5 +1,6 @@
 // heic-to-dynamic-gnome-wallpaper
 // Copyright (C) 2022 Johannes Wünsche
+// Copyright (C) 2026 Raspberrynani
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -19,16 +20,6 @@ use serde::Deserialize;
 pub struct WallpaperMetaTime {
     #[serde(rename = "ti")]
     pub time_slices: Vec<TimeSlice>,
-    #[serde(rename = "ap")]
-    pub appearance: Appearance,
-}
-
-#[derive(Deserialize, Debug)]
-pub struct Appearance {
-    #[serde(rename = "d")]
-    pub dark: i32,
-    #[serde(rename = "l")]
-    pub light: i32,
 }
 
 #[derive(Deserialize, Debug)]
@@ -49,8 +40,6 @@ pub struct WallpaperMetaSun {
 
 #[derive(Deserialize, Debug)]
 pub struct SolarSlice {
-    #[serde(rename = "a")]
-    pub altitude: f32,
     #[serde(rename = "i")]
     pub idx: usize,
     // #[serde(rename = "o")]

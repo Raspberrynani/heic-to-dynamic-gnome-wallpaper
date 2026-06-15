@@ -1,5 +1,6 @@
 // heic-to-dynamic-gnome-wallpaper
 // Copyright (C) 2022 Johannes Wünsche
+// Copyright (C) 2026 Raspberrynani
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -13,7 +14,7 @@
 //
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use crate::image::{process_img, save_xml, ImagePoint};
 use crate::metadata;
@@ -22,29 +23,34 @@ use crate::schema::xml::{Background, StartTime};
 use crate::DAY_SECS;
 
 use crate::util::time;
-use anyhow::Result;
+use anyhow::{Context, Result};
 use chrono::Datelike;
 use colored::*;
-use indicatif::{ProgressBar, ProgressIterator, ProgressStyle};
+use indicatif::{ProgressBar, ProgressStyle};
 use libheif_rs::HeifContext;
+use rayon::prelude::*;
 
 pub fn compute_time_based_wallpaper(
+    source_path: &Path,
     image_ctx: HeifContext,
     content: String,
     parent_directory: &Path,
     image_name: &str,
-) -> Result<()> {
+) -> Result<PathBuf> {
     let mut plist = metadata::get_time_plist_from_base64(&content)?;
     //println!("Found plist {:?}", plist);
 
-    plist
+    plist.time_slices.sort_by(|a, b| a.time.total_cmp(&b.time));
+    let start_time = plist
         .time_slices
-        .sort_by(|a, b| a.time.partial_cmp(&b.time).unwrap());
-    let start_time = plist.time_slices.get(0).unwrap().time;
-    let start_seconds = (start_time * DAY_SECS) as u16;
+        .first()
+        .context("No time slices were found in the wallpaper metadata")?
+        .time;
+    let start_seconds = (start_time * DAY_SECS) as u32;
     let date = chrono::Local::now();
+    let number_of_images = image_ctx.number_of_top_level_images();
     let mut xml_background = Background {
-        images: Vec::new(),
+        images: Vec::with_capacity(number_of_images * 2),
         starttime: StartTime {
             year: date.year(),
             month: date.month(),
@@ -55,7 +61,6 @@ pub fn compute_time_based_wallpaper(
         },
     };
 
-    let number_of_images = image_ctx.number_of_top_level_images();
     println!(
         "{}: Found {} images",
         "Preparation".bright_blue(),
@@ -71,21 +76,20 @@ pub fn compute_time_based_wallpaper(
     let pb = ProgressBar::new(number_of_images as u64).with_style(
         ProgressStyle::default_bar()
             .template("[{wide_bar}] {pos}/{len} [ETA: {eta_precise}]")
+            .map_err(anyhow::Error::from)?
             .progress_chars("## "),
     );
-    for (time_idx, TimeSlice { time, idx }) in
-        plist.time_slices.iter().enumerate().progress_with(pb)
-    {
+    let mut points = Vec::with_capacity(plist.time_slices.len());
+    for (time_idx, TimeSlice { time, idx }) in plist.time_slices.iter().enumerate() {
         let img_id = *image_ids
             .get(*idx)
-            .expect("Could not fetch image id described in metadata");
-        //println!("Image ID: {:?}", img_id);
-        let pt = ImagePoint {
-            image_ctx: &image_ctx,
+            .with_context(|| format!("Could not fetch image id described in metadata: {}", idx))?;
+        points.push(ImagePoint {
+            source_path: source_path.to_path_buf(),
             img_id,
             index: time_idx,
-            background: &mut xml_background,
-            parent_directory,
+            image_count: plist.time_slices.len(),
+            parent_directory: parent_directory.to_path_buf(),
             start_time,
             time: *time,
             next_time: plist
@@ -93,9 +97,22 @@ pub fn compute_time_based_wallpaper(
                 .get(time_idx + 1)
                 .map(|elem| elem.time)
                 .unwrap_or(0f32),
-        };
-        process_img(pt)?;
+        });
     }
+
+    let mut image_entries: Vec<_> = points
+        .par_iter()
+        .map(|point| {
+            let result = process_img(point);
+            pb.inc(1);
+            result
+        })
+        .collect::<Result<Vec<_>>>()?;
+    pb.finish_and_clear();
+    image_entries.sort_by_key(|(idx, _)| *idx);
+    xml_background
+        .images
+        .extend(image_entries.into_iter().flat_map(|(_, images)| images));
 
     // Valify time range
     let total_time = xml_background

@@ -1,3 +1,9 @@
 /target
 /images
+/dist
 *.xml
+*.zip
+*.tar.gz
+*.sha256
+*.log
+*.heic

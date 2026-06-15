@@ -1,68 +1,127 @@
-# heic-to-dynamic-gnome-wallpaper 🌅 🎞 🌇
+# heic-to-dynamic-gnome-wallpaper
 
-This project offers a cli to convert MacOS's dynamic wallpaper stored in `.heic` image containers to dynamic wallpaper definitions usable in GNOME.
+Convert macOS dynamic wallpaper `.heic` files into GNOME dynamic wallpaper XML plus extracted PNG frames.
 
-Both solar position and time based wallpaper definitions are supported. Although due to the nature of the gnome wallpapers, solar based wallpapers will be transferred to a time based division, approximated from the solar position defined for each image.
+The converter supports both Apple `h24` time-based wallpapers and Apple `solar` wallpapers. Solar wallpapers are converted into a time-based GNOME schedule using the azimuth data embedded in the HEIC metadata.
 
-## 🧰 Usage
+## Features
 
-Since most options are dictated by the image information, tweakable options are sparse. All you need to do is specify the path to the image you want to convert.  
-Optionally you can specify a path under which the new images extracted from the `heic` are to be stored including the `xml` specification for GNOME.
+- Extracts every dynamic wallpaper frame from the HEIC container.
+- Preserves irregular `h24` timing intervals from Apple metadata.
+- Writes a GNOME-compatible dynamic wallpaper XML file.
+- Uses parallel frame conversion for faster processing.
+- Installs output by default under `~/.local/share/backgrounds/<wallpaper-name>/`.
+- Can apply the generated wallpaper to GNOME with `--apply`.
+- Can export the generated folder as a ZIP archive with `--zip`.
 
-``` sh
-heic-to-dynamic-gnome-wallpaper
+## Requirements
 
-USAGE:
-    heic-to-gnome-xml-wallpaper [OPTIONS] <IMAGE>
+Install Rust and the native HEIC build dependencies.
 
-FLAGS:
-    -h, --help
-            Prints help information
+Ubuntu/Debian:
 
-    -V, --version
-            Prints version information
-
-
-OPTIONS:
-    -d, --dir <DIR>
-            Specifies into which directory created images should be written to. Default is the parent directory of the
-            given image.
-
-ARGS:
-    <IMAGE>
-            Image which should be transformed
-
+```sh
+sudo apt install pkg-config zlib1g-dev libheif-dev
 ```
 
-## 📦 Installation
+You also need a Rust toolchain:
 
-You'll need a working rust toolchain to install this tool at the moment, check out the instructions [here](https://www.rust-lang.org/tools/install) on how to setup one.
-
-Additionally, you need the following libraries often shipped as:
-```
-libheif
-libheif-dev
+```sh
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 ```
 
-<details>
-  <summary>For openSUSE users</summary>
-  Due to <a href="https://en.opensuse.org/openSUSE:Build_Service_application_blacklist#Software_which_is_encumbered_by_patent_claims">legal reasons</a> the <code>libheif</code> package in the default repositories does not come with the h265 codec required to decode <code>.heic</code> images.
-  The community maintained <code>packman</code> repository can be used here. Check out the <a href="https://en.opensuse.org/Additional_package_repositories#Packman">openSUSE Wiki</a> to see how to use their packages.
-</details>
+Make sure Cargo-installed binaries are on your `PATH`:
 
-### Local via `cargo install`
-
-``` sh
-$ cargo install heic-to-dynamic-gnome-wallpaper
+```sh
+export PATH="$HOME/.cargo/bin:$PATH"
 ```
 
-### Local manual
+Add that line to your shell config if needed.
 
-``` sh
-$ git clone https://github.com/jwuensche/heic-to-dynamic-gnome-wallpaper
-$ cd heic-to-dynamic-gnome-wallpaper
-$ cargo install --path .
-$ # OR
-$ cargo build --release
+## Install Or Reinstall
+
+From this checkout:
+
+```sh
+cd /home/rasp/Downloads/dynamic-wallpaper
+cargo install --path . --force
 ```
 
+Verify:
+
+```sh
+heic-to-dynamic-gnome-wallpaper --help
+```
+
+If the command is not found, your shell is not seeing `~/.cargo/bin`.
+
+## Usage
+
+Basic conversion:
+
+```sh
+heic-to-dynamic-gnome-wallpaper /path/to/wallpaper.heic
+```
+
+This creates:
+
+```text
+~/.local/share/backgrounds/<wallpaper-name>/
+  0.png
+  1.png
+  ...
+  <wallpaper-name>.xml
+```
+
+Use a custom base directory:
+
+```sh
+heic-to-dynamic-gnome-wallpaper /path/to/wallpaper.heic --dir /tmp/wallpapers
+```
+
+Apply to GNOME after conversion:
+
+```sh
+heic-to-dynamic-gnome-wallpaper /path/to/wallpaper.heic --apply
+```
+
+Export a shareable ZIP:
+
+```sh
+heic-to-dynamic-gnome-wallpaper /path/to/wallpaper.heic --zip
+```
+
+Combine options:
+
+```sh
+heic-to-dynamic-gnome-wallpaper /path/to/wallpaper.heic --dir /tmp/wallpapers --zip --apply
+```
+
+## CLI
+
+```text
+Usage: heic-to-dynamic-gnome-wallpaper [OPTIONS] <IMAGE>
+
+Arguments:
+  <IMAGE>
+          Image which should be transformed
+
+Options:
+  -d, --dir <DIR>
+          Specifies the base directory for generated wallpapers. A folder named after the input image will be created inside it. Default is $XDG_DATA_HOME/backgrounds or ~/.local/share/backgrounds.
+
+      --apply
+          Apply the generated wallpaper through GNOME settings after conversion.
+
+      --zip
+          Export the generated wallpaper folder as a zip file next to the folder.
+
+  -h, --help
+          Print help
+```
+
+## Notes
+
+- Re-running conversion for the same wallpaper name cleans previously generated numbered PNG files and the matching XML before writing new output.
+- ZIP export stores PNG files without recompressing them, so archive creation is fast and avoids wasting CPU on already-compressed images.
+- On openSUSE, the default `libheif` package may not include the HEIC/H.265 codec. Use the Packman repository if decoding HEIC files fails.

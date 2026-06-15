@@ -1,5 +1,6 @@
 // heic-to-dynamic-gnome-wallpaper
 // Copyright (C) 2022 Johannes Wünsche
+// Copyright (C) 2026 Raspberrynani
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -18,12 +19,13 @@ use crate::schema::xml::{Background, StartTime};
 use crate::util::time;
 use crate::DAY_SECS;
 use crate::{image::process_img, metadata};
-use anyhow::Result;
+use anyhow::{Context, Result};
 use chrono::Datelike;
-use indicatif::{ProgressBar, ProgressIterator, ProgressStyle};
+use indicatif::{ProgressBar, ProgressStyle};
 use libheif_rs::HeifContext;
+use rayon::prelude::*;
 use std::cmp::Ordering;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use colored::*;
 #[derive(Debug)]
@@ -33,11 +35,12 @@ struct SolarToHourSlice {
 }
 
 pub fn compute_solar_based_wallpaper(
+    source_path: &Path,
     image_ctx: HeifContext,
     content: String,
     parent_directory: &Path,
     image_name: &str,
-) -> Result<()> {
+) -> Result<PathBuf> {
     let mut plist = metadata::get_solar_plist_from_base64(&content)?;
 
     plist
@@ -54,8 +57,11 @@ pub fn compute_solar_based_wallpaper(
     let mut img_ids = vec![0; image_ctx.number_of_top_level_images()];
     image_ctx.top_level_image_ids(&mut img_ids);
 
-    let start_time = time_slices.get(0).expect("No image has been found").time;
-    let start_seconds = (start_time * DAY_SECS) as u16;
+    let start_time = time_slices
+        .first()
+        .context("No solar slices were found in the wallpaper metadata")?
+        .time;
+    let start_seconds = (start_time * DAY_SECS) as u32;
     let date = chrono::Local::now();
     let mut background_definition = Background {
         starttime: StartTime {
@@ -66,7 +72,7 @@ pub fn compute_solar_based_wallpaper(
             minute: time::to_rem_min(start_seconds),
             second: time::to_rem_sec(start_seconds),
         },
-        images: vec![],
+        images: Vec::with_capacity(time_slices.len() * 2),
     };
 
     println!(
@@ -77,25 +83,42 @@ pub fn compute_solar_based_wallpaper(
     let pb = ProgressBar::new(image_ctx.number_of_top_level_images() as u64).with_style(
         ProgressStyle::default_bar()
             .template("[{wide_bar}] {pos}/{len} [ETA: {eta_precise}]")
+            .map_err(anyhow::Error::from)?
             .progress_chars("## "),
     );
-    for (idx, SolarToHourSlice { time, index }) in time_slices.iter().enumerate().progress_with(pb)
-    {
-        let img_id = img_ids[*index];
-        let pt = ImagePoint {
-            image_ctx: &image_ctx,
+    let mut points = Vec::with_capacity(time_slices.len());
+    for (idx, SolarToHourSlice { time, index }) in time_slices.iter().enumerate() {
+        let img_id = *img_ids.get(*index).with_context(|| {
+            format!("Could not fetch image id described in metadata: {}", index)
+        })?;
+        points.push(ImagePoint {
+            source_path: source_path.to_path_buf(),
             img_id,
             index: idx,
-            background: &mut background_definition,
-            parent_directory,
+            image_count: time_slices.len(),
+            parent_directory: parent_directory.to_path_buf(),
             start_time,
             time: *time,
             next_time: time_slices
                 .get(idx + 1)
                 .map(|elem| elem.time)
                 .unwrap_or(0f32),
-        };
-        process_img(pt)?;
+        });
     }
+
+    let mut image_entries: Vec<_> = points
+        .par_iter()
+        .map(|point| {
+            let result = process_img(point);
+            pb.inc(1);
+            result
+        })
+        .collect::<Result<Vec<_>>>()?;
+    pb.finish_and_clear();
+    image_entries.sort_by_key(|(idx, _)| *idx);
+    background_definition
+        .images
+        .extend(image_entries.into_iter().flat_map(|(_, images)| images));
+
     image::save_xml(&mut background_definition, parent_directory, image_name)
 }

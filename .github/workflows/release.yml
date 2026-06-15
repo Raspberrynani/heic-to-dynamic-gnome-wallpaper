@@ -1,33 +1,51 @@
-name: "release"
+name: release
 
 on:
   push:
     tags:
       - "v*"
 
+permissions:
+  contents: write
+
 jobs:
   tagged-release:
-    name: "Tagged Release"
-    runs-on: "ubuntu-latest"
+    name: Tagged Release
+    runs-on: ubuntu-latest
 
     steps:
-      # ...
-      - name: "Prepare"
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install native dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y curl libheif-dev gcc git
-          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
-          source $HOME/.cargo/env
+          sudo apt-get install -y gcc libheif-dev pkg-config zlib1g-dev
 
-      - name: "Build"
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Build
+        run: cargo build --release --locked
+
+      - name: Test
+        run: cargo test --locked
+
+      - name: Package
         run: |
-          ls -la
-          git clone https://github.com/jwuensche/heic-to-dynamic-gnome-wallpaper.git
-          cd heic-to-dynamic-gnome-wallpaper
-          cargo build --release
+          set -euo pipefail
+          target_name="heic-to-dynamic-gnome-wallpaper-${GITHUB_REF_NAME}-x86_64-unknown-linux-gnu"
+          mkdir -p "dist/${target_name}"
+          cp target/release/heic-to-dynamic-gnome-wallpaper "dist/${target_name}/"
+          cp README.md COPYING "dist/${target_name}/"
+          tar -C dist -czf "dist/${target_name}.tar.gz" "${target_name}"
+          sha256sum "dist/${target_name}.tar.gz" > "dist/${target_name}.tar.gz.sha256"
 
-      - name: "Release"
-        uses: "marvinpinto/action-automatic-releases@latest"
+      - name: Release
+        uses: marvinpinto/action-automatic-releases@latest
         with:
           repo_token: "${{ secrets.GITHUB_TOKEN }}"
           prerelease: false
+          files: |
+            dist/*.tar.gz
+            dist/*.sha256

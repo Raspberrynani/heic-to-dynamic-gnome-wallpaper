@@ -1,5 +1,6 @@
 // heic-to-dynamic-gnome-wallpaper
 // Copyright (C) 2022 Johannes Wünsche
+// Copyright (C) 2026 Raspberrynani
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -13,14 +14,14 @@
 //
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
-pub fn to_rem_hours(secs: u16) -> u16 {
-    secs / 60 / 60
+pub fn to_rem_hours(secs: u32) -> u16 {
+    (secs / 60 / 60) as u16
 }
 
-pub fn to_rem_min(secs: u16) -> u16 {
-    secs / 60 % 60
+pub fn to_rem_min(secs: u32) -> u16 {
+    (secs / 60 % 60) as u16
 }
 
-pub fn to_rem_sec(secs: u16) -> u16 {
-    secs % 60
+pub fn to_rem_sec(secs: u32) -> u16 {
+    (secs % 60) as u16
 }

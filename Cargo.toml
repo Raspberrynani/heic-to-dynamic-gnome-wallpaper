@@ -1,12 +1,15 @@
 [package]
 name = "heic-to-dynamic-gnome-wallpaper"
 version = "0.1.6"
-authors = ["Johannes Wünsche <johannes@spacesnek.rocks>"]
-edition = "2018"
+authors = [
+  "Johannes Wünsche <johannes@spacesnek.rocks>",
+  "Raspberrynani <54159650+Raspberrynani@users.noreply.github.com>",
+]
+edition = "2026"
 description = "CLI tool to convert heic image containers used in MacOS's dynamic wallpapers to dynamic gnome xml wallpapers"
 readme = "README.md"
-homepage = "https://git.spacesnek.rocks/johannes/heic-to-gnome-xml-wallpaper"
-repository = "https://git.spacesnek.rocks/johannes/heic-to-gnome-xml-wallpaper"
+homepage = "https://github.com/Raspberrynani/heic-to-dynamic-gnome-wallpaper"
+repository = "https://github.com/Raspberrynani/heic-to-dynamic-gnome-wallpaper"
 categories = ["command-line-utilities", "multimedia::images", "multimedia"]
 keywords = ["heic", "gnome", "wallpaper", "dynamic", "convert"]
 license = "GPL-3.0-only"
@@ -14,17 +17,19 @@ license = "GPL-3.0-only"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-anyhow = "1.0.39"
-base64 = "0.13.0"
-chrono = "0.4.19"
-clap = "3.1"
-colored = "2.0.0"
-indicatif = "0.16"
-libheif-rs = "0.15"
-plist = "1.1.0"
+anyhow = "1.0"
+base64 = "0.22"
+chrono = "0.4"
+clap = "4.6"
+colored = "3.0"
+indicatif = "0.18"
+libheif-rs = { version = "=2.4.0", default-features = false, features = ["v1_17"] }
+plist = "1.8"
 png = "0.17"
-quick-xml = { version = "0.22.0", features = ["serialize"] }
-serde = { version = "1.0.124", features = ["derive"] }
+quick-xml = { version = "0.40", features = ["serialize"] }
+rayon = "1.10"
+serde = { version = "1.0", features = ["derive"] }
+zip = { version = "2.4", default-features = false, features = ["deflate"] }
 
 [package.metadata.rpm]
 package = "heic-to-dynamic-gnome-wallpaper"
