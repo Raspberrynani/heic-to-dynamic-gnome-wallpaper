@@ -43,7 +43,7 @@ Add that line to your shell config if needed.
 From this checkout:
 
 ```sh
-cd /home/rasp/Downloads/dynamic-wallpaper
+cd $yourdownloadedpath
 cargo install --path . --force
 ```
 
